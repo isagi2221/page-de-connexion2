@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connexion - Inscription</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Poppins', sans-serif; overflow: hidden; background: black; height: 100vh; display: flex; justify-content: center; align-items: center; }
+    canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
+
+    .container {
+      position: relative;
+      z-index: 2;
+      background: rgba(0, 0, 0, 0.8);
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 8px 20px rgba(0,255,0,0.3);
+      width: 320px;
+      text-align: center;
+      color: #00ff88;
+    }
+
+    h2 { margin-bottom: 10px; }
+    p { color: #aaffcc; }
+    form { display: flex; flex-direction: column; gap: 15px; margin-top: 20px; }
+    input { padding: 12px; border-radius: 8px; border: 1px solid #00ff88; background: transparent; color: #00ff88; font-size: 15px; outline: none; }
+    input::placeholder { color: #77ff99; }
+    button { background-color: #00ff88; color: black; border: none; padding: 12px; border-radius: 8px; cursor: pointer; transition: 0.3s; font-weight: bold; }
+    button:hover { background-color: #00cc66; }
+    .divider { margin: 15px 0; font-size: 14px; color: #77ff99; }
+    .social-login button { width: 100%; margin-bottom: 10px; }
+    .google { background-color: #db4437; color: white; }
+    .phone { background-color: #0f9d58; color: white; }
+    .hidden { display: none; }
+    .signup-text a { color: #00ff88; text-decoration: none; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <!-- ReCAPTCHA invisible pour Firebase Phone Auth -->
+<div id="recaptcha-container"></div>
+  <canvas id="matrix"></canvas>
+
+  <!-- Formulaire de connexion -->
+  <div class="container" id="loginContainer">
+    <h2>Bienvenue 👋</h2>
+    <p>Connectez-vous à votre compte</p>
+
+    <form id="loginForm">
+      <input type="email" id="email" placeholder="Adresse e-mail" required>
+      <input type="password" id="password" placeholder="Mot de passe" required>
+      <button type="submit">Se connecter</button>
+    </form>
+
+    <div class="divider">ou</div>
+
+    <div class="social-login">
+      <button class="google">Se connecter avec Google</button>
+      <button class="phone">Se connecter avec téléphone</button>
+    </div>
+
+    <p class="signup-text">
+      Pas encore de compte ? <a href="#" id="showSignup">Inscrivez-vous</a>
+    </p>
+  </div>
+
+  <!-- Formulaire d'inscription -->
+  <div class="container hidden" id="signupForm">
+    <h2>Créer un compte 📝</h2>
+    <form>
+      <input type="text" placeholder="Nom complet" required>
+      <input type="email" placeholder="Adresse e-mail" required>
+      <input type="password" placeholder="Mot de passe" required>
+      <button type="submit">S'inscrire</button>
+    </form>
+    <p class="signup-text">
+      Déjà un compte ? <a href="#" id="showLogin">Connectez-vous</a>
+    </p>
+  </div>
+
+  <!-- Firebase SDK et script -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-analytics.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, RecaptchaVerifier, signInWithPhoneNumber } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+
+    // 🔧 Configuration Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyCYVtud7bTM1bfSSDn_B5vroaCv39l5c20",
+      authDomain: "apk-5eee5.firebaseapp.com",
+      projectId: "apk-5eee5",
+      storageBucket: "apk-5eee5.firebasestorage.app",
+      messagingSenderId: "686642119762",
+      appId: "1:686642119762:web:a0ad9eb71e0941cf490b8b",
+      measurementId: "G-R7KTKGKQMK"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    const auth = getAuth(app);
+
+    // --- Connexion Google ---
+    const googleBtn = document.querySelector('.google');
+    googleBtn.addEventListener('click', async () => {
+      const provider = new GoogleAuthProvider();
+      try {
+        const result = await signInWithPopup(auth, provider);
+        const user = result.user;
+        alert(Connecté avec Google : ${user.displayName});
+      } catch (error) {
+        alert('Erreur Google : ' + error.message);
+      }
+    });
+
+    // --- Connexion téléphone ---
+    const phoneBtn = document.querySelector('.phone');
+    phoneBtn.addEventListener('click', async () => {
+      const phoneNumber = prompt("Entrez votre numéro (+228...) :");
+      if (!phoneNumber) return;
+
+      // reCAPTCHA
+window.recaptchaVerifier = new RecaptchaVerifier('recaptcha-container', { 'size': 'invisible' }, auth);
+
+      try {
+        const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, window.recaptchaVerifier);
+        const code = prompt("Entrez le code reçu par SMS :");
+        const result = await confirmationResult.confirm(code);
+        alert(Connecté avec le numéro : ${result.user.phoneNumber});
+      } catch (error) {
+        alert('Erreur SMS : ' + error.message);
+      }
+    });
+  </script>
+
+  <!-- Animation Matrix -->
+  <script>
+    const canvas = document.getElementById('matrix');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const letters = '01';
+    const fontSize = 12;
+    const columns = canvas.width / fontSize;
+    const drops = Array(Math.floor(columns)).fill(1);
+
+    function drawMatrix() {
+      ctx.fillStyle = 'rgba(0,0,0,0.05)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#00ff00';
+      ctx.font = fontSize + 'px monospace';
+
+      for (let i = 0; i < drops.length; i++) {
+        const text = letters[Math.floor(Math.random() * letters.length)];
+        ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+        drops[i]++;
+      }
+    }
+
+    setInterval(drawMatrix, 45);
+  </script>
+
+  <!-- Bascule Connexion/Inscription -->
+  <script>
+    const showSignup = document.getElementById("showSignup");
+    const showLogin = document.getElementById("showLogin");
+    const loginContainer = document.getElementById("loginContainer");
+    const signupForm = document.getElementById("signupForm");
+
+    showSignup.addEventListener("click", () => {
+      loginContainer.classList.add("hidden");
+      signupForm.classList.remove("hidden");
+    });
+
+    showLogin.addEventListener("click", () => {
+      signupForm.classList.add("hidden");
+      loginContainer.classList.remove("hidden");
+    });
+  </script>
+</body>
+</html>
